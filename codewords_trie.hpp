@@ -26,7 +26,7 @@ struct CodewordsTrie {
 
     // // храним здесь только первую букву, чтобы память не росла:
     char first_letter;
-    std::unordered_map<char, size_t> childs;
+    std::unordered_map<char, size_t> children;
   };
 
   CodewordsTrie(SuffixTree* st) : _st(st) {
@@ -84,7 +84,7 @@ void CodewordsTrie::step(CodeType k) {
   std::cout << "read: " << _nodes.at(k) << "\n";
   std::cout << "\n";
   char first_letter = _nodes.at(k).first_letter;
-  if (!_nodes[_curr_node_id].childs.contains(first_letter)) {
+  if (!_nodes[_curr_node_id].children.contains(first_letter)) {
     _nodes.emplace_back(_nodes[_curr_node_id].first_letter);
     _nodes.back().str_codeword_size =
         _nodes[_curr_node_id].str_codeword_size + 1;
@@ -92,7 +92,7 @@ void CodewordsTrie::step(CodeType k) {
     _nodes.back().codeword = new_codeword;
     _nodes.back().full_string =
         _nodes[_curr_node_id].full_string + first_letter;
-    _nodes[_curr_node_id].childs.emplace(first_letter, _nodes.size() - 1);
+    _nodes[_curr_node_id].children.emplace(first_letter, _nodes.size() - 1);
     SuffTreeNodeInfo next_node = _st->get_next_node(
         _nodes[_curr_node_id].node_in_suffix_tree, first_letter);
     _nodes.back().node_in_suffix_tree = next_node;
