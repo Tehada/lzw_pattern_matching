@@ -92,7 +92,7 @@ void CodewordsTrie::step(CodeType k) {
     _nodes.back().codeword = new_codeword;
     _nodes.back().full_string =
         _nodes[_curr_node_id].full_string + first_letter;
-    _nodes[_curr_node_id].children.emplace(first_letter, _nodes.size() - 1);
+    _nodes[_curr_node_id].children.emplace(first_letter, new_codeword);
     SuffTreeNodeInfo next_node = _st->get_next_node(
         _nodes[_curr_node_id].node_in_suffix_tree, first_letter);
     _nodes.back().node_in_suffix_tree = next_node;
