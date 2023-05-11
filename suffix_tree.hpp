@@ -12,6 +12,8 @@
 
 #include "rmq/pm_rmq.hpp"
 
+class SuffixTree;
+
 struct Node {
   int suffix_node = -1;
 };
@@ -28,12 +30,13 @@ struct Edge {
   int first_char_index, last_char_index, source_node_index, dest_node_index;
 
   size_t size() const {
-    if (leads_to_leaf) {
-      assert(last_char_index >= first_char_index);
-      return last_char_index - first_char_index;
-    }
+    // if (leads_to_leaf) {
+    //   assert(last_char_index >= first_char_index);
+    //   return last_char_index - first_char_index;
+    // }
 
-    return last_char_index - first_char_index + 1;
+    // return last_char_index - first_char_index + 1;
+    return last_char_index - first_char_index;
   }
 
   bool leads_to_leaf = false;
@@ -75,6 +78,7 @@ struct SuffTreeNodeInfo {
   int node_id = -1;
   const Edge* edge = nullptr;
   size_t offset = 0;
+  const SuffixTree* sf_ptr = nullptr;
 };
 
 std::ostream& operator<<(std::ostream& os, const SuffTreeNodeInfo& info);
@@ -98,6 +102,8 @@ struct SuffixTree {
   bool _print_debug_info;
 
   std::unordered_set<int> _leaf_nodes;
+
+  std::unordered_set<int> _marked_nodes;
 
   SuffixTree(const std::string& str, bool print_debug_info = false)
       : _active(0, 0, -1), _nodes(1), _print_debug_info(print_debug_info) {
@@ -131,13 +137,32 @@ struct SuffixTree {
 
       if (_leaf_nodes.contains(edge.dest_node_index)) {
         edge.leads_to_leaf = true;
+        if (edge.size() == 0) {
+          _marked_nodes.insert(edge.source_node_index);
+        } else {
+          _marked_nodes.insert(edge.dest_node_index);
+        }
       }
 
       if (print_debug_info) {
-        std::cout << "---> " << key.first << " <--> " << edge.dest_node_index
+        std::cout << "---> " << edge.source_node_index << " <--> "
+                  << edge.dest_node_index << ", str: "
+                  << _string.substr(
+                         edge.first_char_index,
+                         edge.last_char_index - edge.first_char_index + 1)
                   << ", suffix_node: " << _nodes[key.first].suffix_node << " | "
                   << edge.first_char_index << ", " << edge.last_char_index
                   << "\n";
+      }
+    }
+
+    if (print_debug_info) {
+      for (auto node : _marked_nodes) {
+        std::cout << "marked node: " << node << "\n";
+      }
+
+      for (auto node : _leaf_nodes) {
+        std::cout << "leaf node: " << node << "\n";
       }
     }
 
@@ -321,13 +346,13 @@ struct SuffixTree {
         return -1;
       }
       edge = _edges.at({curr_node, substring[i]});
-      ln = std::min(edge.size(), substring.size() - i);
+      ln = std::min(edge.size() + 1, substring.size() - i);
       for (size_t ii = 0; ii < ln; ++ii) {
         if (substring[i + ii] != _string[edge.first_char_index + ii]) {
           return -1;
         }
       }
-      i += edge.size();
+      i += edge.size() + 1;
       curr_node = edge.dest_node_index;
     }
     return edge.first_char_index - substring.size() + ln;
@@ -358,6 +383,7 @@ struct SuffixTree {
   // ideally this should be checked strictly.
   SuffTreeNodeInfo get_node(const std::string& substring) const {
     SuffTreeNodeInfo res;
+    res.sf_ptr = this;
     if (substring.empty()) {
       return res;
     }
@@ -370,17 +396,17 @@ struct SuffixTree {
         return {.node_id = curr_node};
       }
       edge = &(_edges.at({curr_node, substring[i]}));
-      ln = std::min(edge->size(), substring.size() - i);
+      ln = std::min(edge->size() + 1, substring.size() - i);
       for (size_t ii = 0; ii < ln; ++ii) {
         if (substring[i + ii] != _string[edge->first_char_index + ii]) {
           throw std::runtime_error("Not implemented!");
           return {.node_id = curr_node, .edge = edge, .offset = ii};
         }
       }
-      if (ln < edge->size()) {
+      if (ln < edge->size() + 1) {
         return {.node_id = curr_node, .edge = edge, .offset = ln};
       }
-      i += edge->size();
+      i += edge->size() + 1;
       curr_node = edge->dest_node_index;
     }
     return {.node_id = curr_node};
@@ -394,10 +420,14 @@ struct SuffixTree {
   }
 
   SuffTreeNodeInfo get_next_node(const SuffTreeNodeInfo& info, char c) {
+    SuffTreeNodeInfo res = {.sf_ptr = this};
     if (c == '$') {
-      return {};
+      return res;
     }
-    std::cout << info << "\n";
+
+    if (info.node_id == -1) {
+      return res;
+    }
 
     // Проверяем находимся ли мы в explicit ноде сейчас:
     if (info.edge == nullptr) {
@@ -406,36 +436,48 @@ struct SuffixTree {
       // Можем ли мы шагнуть из неё по символу `c`:
       if (_edges.contains({info.node_id, c})) {
         Edge* edge = &(_edges.at({info.node_id, c}));
-        std::cout << "-------> here4, edge size: " << edge->size() << "\n";
+        std::cout << "-------> here4\n";
         // Проверим, сколько у нас символов на этом ребре, чтобы понять, будем
         // ли мы возвращать explicit или implicit ноду:
-        if (edge->size() == 1) {
-          std::cout << "-----> here5, returning explicit node\n";
-          return {.node_id = edge->dest_node_index};
+        if (edge->size() == 0 || (edge->size() == 1 && edge->leads_to_leaf)) {
+          std::cout << "-----> here5\n";
+          res.node_id = edge->dest_node_index;
+          return res;
         } else {
-          std::cout << "-----> here5, returning implicit node\n";
-          return {.node_id = info.node_id, .edge = edge, .offset = 1};
+          std::cout << "-----> here6\n";
+          res.node_id = info.node_id;
+          res.edge = edge;
+          res.offset = 0;
+          return res;
         }
       } else {
         // Если не можем шагнуть, то подстрока не найдена, тогда вернём ноду с
         // node_id == -1 (по дефолту там уже это значение стоит у
         // SuffTreeNodeInfo):
-        return {};
+        return res;
       }
     } else {
+      std::cout << "-------> here7\n";
       // Мы в implicit ноде.
       // Проверим совпадение символов:
       if (_string.at(info.edge->first_char_index + info.offset + 1) == c) {
+        std::cout << "-------> here8\n";
         // Теперь надо понять, будет ли следющая нода explicit или implicit.
-        if (info.offset + 1 == info.edge->size()) {
-          return {.node_id = info.edge->dest_node_index};
+        if (info.offset + 1 == info.edge->size() ||
+            (info.offset + 2 == info.edge->size() &&
+             info.edge->leads_to_leaf)) {
+          std::cout << "-------> here9\n";
+          res.node_id = info.edge->dest_node_index;
+          return res;
         } else {
-          return {.node_id = info.node_id,
-                  .edge = info.edge,
-                  .offset = info.offset + 1};
+          std::cout << "-------> here10\n";
+          res.node_id = info.node_id;
+          res.edge = info.edge;
+          res.offset = info.offset + 1;
+          return res;
         }
       } else {
-        return {};
+        return res;
       }
     }
   }
@@ -458,13 +500,13 @@ struct SuffixTree {
         return "";
       }
       edge = _edges.at({curr_node, substring[i]});
-      ln = std::min(edge.size(), substring.size() - i);
+      ln = std::min(edge.size() + 1, substring.size() - i);
       for (size_t ii = 0; ii < ln; ++ii) {
         if (substring[i + ii] != _string[edge.first_char_index + ii]) {
           return "";
         }
       }
-      i += edge.size();
+      i += edge.size() + 1;
       curr_node = edge.dest_node_index;
       if (curr_node == lca_node) {
         break;
@@ -565,13 +607,20 @@ struct SuffixTree {
   }
 
   SuffTreeNodeInfo get_root_node() { return {.node_id = 0}; }
+
+  bool is_marked_node(int node_id) const {
+    return _marked_nodes.contains(node_id);
+  }
 };
 
 std::ostream& operator<<(std::ostream& os, const SuffTreeNodeInfo& info) {
   os << "SuffTreeNodeInfo: <node_id: " << info.node_id
      << ", offset: " << info.offset;
   if (info.edge != nullptr) {
-    os << ", edge size: " << info.edge->size();
+    os << ", edge size: " << info.edge->size() << ", str: "
+       << info.sf_ptr->_string.substr(
+              info.edge->first_char_index,
+              info.edge->last_char_index - info.edge->first_char_index + 1);
   }
   os << ">";
   return os;

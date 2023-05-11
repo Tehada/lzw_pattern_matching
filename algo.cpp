@@ -32,7 +32,7 @@ void naive_pattern_matching(const std::string& snippet_before,
 
 struct NaiveAlgo {
   void step(const CodewordsTrie::Node& node) {
-    std::cout << "   -------> naive algo step: " << node << "\n";
+    std::cout << "naive algo step\n";
   }
 };
 
@@ -42,6 +42,7 @@ void search(std::istream& is, SuffixTree* st) {
   CodeType k;
 
   while (is.read(reinterpret_cast<char*>(&k), sizeof(CodeType))) {
+    std::cout << "================================================\n";
     std::cout << "read codeword: " << k << "\n";
     trie.step(k);
     const CodewordsTrie::Node& node = trie._nodes.at(k);
@@ -52,7 +53,7 @@ void search(std::istream& is, SuffixTree* st) {
 }
 
 int main(int argc, char* argv[]) {
-  std::string pattern = "abacabadabdl";
+  std::string pattern = "abcd";
   assert(pattern.find("$") == std::string::npos);
   std::string prefix_snippet = "abacab";
   std::string snippet = "cabad";
