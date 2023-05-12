@@ -10,22 +10,6 @@
 #include "codewords_trie.hpp"
 #include "suffix_tree.hpp"
 
-void fill_lps(const std::string& pattern, std::vector<size_t>* lps) {
-  (*lps)[0] = 0;
-  size_t len = 0;
-
-  for (size_t i = 0; i + 1 < pattern.size(); ++i) {
-    while (pattern[i + 1] != pattern[len] && len > 0) {
-      len = (*lps)[len - 1];
-    }
-
-    if (pattern[i + 1] == pattern[len]) {
-      ++len;
-    }
-    (*lps)[i + 1] = len;
-  }
-}
-
 void naive_pattern_matching(const std::string& snippet_before,
                             const std::vector<std::string>& snippets,
                             const std::string& snippet_after) {}
@@ -36,9 +20,9 @@ struct NaiveAlgo {
   }
 };
 
-void search(std::istream& is, SuffixTree* st) {
+void search(std::istream& is, const UsefulStructs& useful_structs) {
   NaiveAlgo algo;
-  CodewordsTrie trie(st);
+  CodewordsTrie trie(useful_structs);
   CodeType k;
 
   while (is.read(reinterpret_cast<char*>(&k), sizeof(CodeType))) {
@@ -53,23 +37,15 @@ void search(std::istream& is, SuffixTree* st) {
 }
 
 int main(int argc, char* argv[]) {
-  std::string pattern = "abcd";
+  // std::string pattern = "abcd";
+  std::string pattern = "aab";
   assert(pattern.find("$") == std::string::npos);
   std::string prefix_snippet = "abacab";
   std::string snippet = "cabad";
 
   std::string reversed_pattern(pattern.rbegin(), pattern.rend());
-
-  std::vector<size_t> lps(pattern.size());
-  fill_lps(pattern, &lps);
-
-  std::vector<size_t> reversed_lps(reversed_pattern.size());
-  fill_lps(reversed_pattern, &reversed_lps);
-
-  auto st = SuffixTree(pattern, true);
-  auto reversed_st = SuffixTree(reversed_pattern);
-
+  auto useful_structs = UsefulStructs(pattern, reversed_pattern);
   std::ifstream input_file(argv[1], std::ios_base::binary);
-  search(input_file, &st);
+  search(input_file, useful_structs);
   return 0;
 }

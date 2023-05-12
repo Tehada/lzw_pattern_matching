@@ -419,7 +419,7 @@ struct SuffixTree {
     return _string.at(info.edge->first_char_index + info.offset + 1) == c;
   }
 
-  SuffTreeNodeInfo get_next_node(const SuffTreeNodeInfo& info, char c) {
+  SuffTreeNodeInfo get_next_node(const SuffTreeNodeInfo& info, char c) const {
     SuffTreeNodeInfo res = {.sf_ptr = this};
     if (c == '$') {
       return res;
@@ -435,7 +435,7 @@ struct SuffixTree {
       // Мы в explicit ноде.
       // Можем ли мы шагнуть из неё по символу `c`:
       if (_edges.contains({info.node_id, c})) {
-        Edge* edge = &(_edges.at({info.node_id, c}));
+        const Edge* edge = &(_edges.at({info.node_id, c}));
         std::cout << "-------> here4\n";
         // Проверим, сколько у нас символов на этом ребре, чтобы понять, будем
         // ли мы возвращать explicit или implicit ноду:
@@ -606,7 +606,7 @@ struct SuffixTree {
     return res;
   }
 
-  SuffTreeNodeInfo get_root_node() { return {.node_id = 0}; }
+  SuffTreeNodeInfo get_root_node() const { return {.node_id = 0}; }
 
   bool is_marked_node(int node_id) const {
     return _marked_nodes.contains(node_id);
