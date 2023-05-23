@@ -20,10 +20,14 @@ void fill_lps(const std::string& pattern, std::vector<size_t>* lps) {
   }
 }
 
+std::vector<size_t> lemma41(const std::string& pattern,
+                            const std::vector<size_t>& lps);
+
 struct UsefulStructs {
   std::string pattern, reversed_pattern;
   std::vector<size_t> lps, reversed_lps;
   SuffixTree st, reversed_st;
+  std::vector<size_t> half_snippets_info;
 
   UsefulStructs(const std::string& pattern, const std::string& reversed_pattern)
       : pattern(pattern), st(pattern, true), reversed_st(reversed_pattern) {
@@ -38,6 +42,8 @@ struct UsefulStructs {
 
     reversed_lps.resize(pattern.size());
     fill_lps(reversed_pattern, &(reversed_lps));
+
+    half_snippets_info = lemma41(pattern, lps);
   }
 };
 
