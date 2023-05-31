@@ -12,19 +12,31 @@ std::vector<size_t> lemma28_simplified(const std::string& prefix_snippet,
                                        const CodewordsTrie::Node& snippet_node,
                                        const UsefulStructs& useful_structs) {
   const std::string& pattern = useful_structs.pattern;
-  const std::string& snippet = snippet_node.full_string;
+
+  std::string snippet = snippet_node.full_string;
+  if (!snippet_node.is_snippet) {
+    snippet = snippet.substr(
+        0, snippet_node.len_of_prefix_intersection_with_suffix_of_pattern);
+    if (snippet.empty()) {
+      return {};
+    }
+  }
   std::cout << "pattern: " << pattern << "\n";
   std::cout << "prefix_snippet: " << prefix_snippet << "\n";
   std::cout << "snippet: " << snippet_node << "\n";
   std::string concat = prefix_snippet + snippet;
   std::cout << "concat: " << concat << "\n";
 
-  assert(!prefix_snippet.empty());
   assert(!snippet.empty());
 
   if (pattern.size() > concat.size()) {
+    std::cout << "pattern is too long, exiting...\n";
     return {};
   }
+
+  size_t period = pattern.size() - useful_structs.lps.back();
+  std::cout << "period of the pattern `" << pattern << "` is: " << period
+            << "\n";
 
   // this part is not described in lemma 2.8 by gawry, but it seems necessary.
   // Basically lemma 2.8 is only concerned about long borders of both snippets.
@@ -70,6 +82,9 @@ std::vector<size_t> lemma28_simplified(const std::string& prefix_snippet,
   //
   // to check for equality of 2 substrings here we will use query on reversed
   // suffix tree.
+  if (!snippet_node.is_suffix) {
+    return {};
+  }
   assert(pattern.size() > snippet.size());
   substr_to_check = pattern.substr(0, pattern.size() - snippet.size());
   std::cout << "[simple check] comparing `" << substr_to_check
@@ -274,9 +289,12 @@ int lemma28(const std::string& pattern, const std::string& prefix_snippet,
   return -1;
 }
 
-size_t lemma29(const std::string& prefix_snippet,
-               const CodewordsTrie::Node& snippet_node,
-               const UsefulStructs& useful_structs) {
+// here we will return the position of occurence of pattern in the
+// concatenation. -1 will mean no occurence.
+int lemma29(const std::string& prefix_snippet,
+            const CodewordsTrie::Node& snippet_node,
+            // const std::string& snippet,
+            const UsefulStructs& useful_structs) {
   const std::string& pattern = useful_structs.pattern;
   const std::string& snippet = snippet_node.full_string;
 
@@ -291,6 +309,19 @@ size_t lemma29(const std::string& prefix_snippet,
   std::cout << "period d for prefix_snippet: " << d << ", " << prefix_snippet
             << "\n";
 
+  assert(d != 0);
+
+  if (d == prefix_snippet.size()) {
+    std::cout << "period d is undefined\n";
+    if (snippet_node.is_prefix) {
+      return prefix_snippet.size();
+    }
+    return prefix_snippet.size() + snippet_node.str_codeword_size -
+           snippet_node.len_of_suffix_intersection_with_prefix_of_pattern;
+  }
+
+  throw std::runtime_error("not implemented");
+
   std::cout << "calculating p[1...ii] by finding longest common prefix of: `"
             << pattern.substr(d) << "` and `" << pattern << "`\n";
 
@@ -303,47 +334,50 @@ size_t lemma29(const std::string& prefix_snippet,
             << ", p1ii: " << pattern.substr(0, ii) << "\n";
   std::string p1ii = pattern.substr(0, ii);
   std::cout << "longest common prefix for `" << substr_of_pattern << "` and `"
-            << pattern << "` is: `" << str << "` which_is_a_prefix_of_pn";
+            << pattern << "` is: `" << str << "` which_is_a_prefix_of_pn\n";
 
   std::cout << "p[1...ii]: " << p1ii << "\n";
 
-  assert(prefix_snippet.size() + snippet.size() >= pattern.size());
-  int shift = prefix_snippet.size() + snippet.size() - pattern.size();
-  shift = (shift + d) / d * d;
+  int shift;
+  if (prefix_snippet.size() + snippet.size() < pattern.size()) {
+    shift = 0;
+  } else {
+    shift = prefix_snippet.size() + snippet.size() - pattern.size();
+    shift = (shift + d) / d * d;
+  }
   std::cout << "smallest possible shift: " << shift << "\n";
   std::cout << prefix_snippet << " -- prefix_snippet\n";
   std::cout << concat << " -- concat\n";
   std::cout << std::string(shift, '_') + p1ii << " -- shifted p1ii\n";
   std::cout << std::string(shift, '_') + pattern << " -- shifted pattern\n";
 
-  // find leftmost mismatch between shifted p1k and snippet
-  std::optional<bool> leftmost_mismatch_was_found;
-  if (p1ii.size() + shift <= prefix_snippet.size()) {
-    throw std::runtime_error("Not implemented!");
-    // means that we don't even have any intersection between shifted p[1...k]
+  if (p1ii.size() + shift == prefix_snippet.size()) {
+    // means that we don't even have any intersection between shifted p[1...ii]
     // and p[j...m], hence no mismatch.
-    leftmost_mismatch_was_found = false;
-  } else {
-    assert(prefix_snippet.size() >= shift);
-    size_t r = prefix_snippet.size() - shift + 1;
-    assert(r >= 1);
-    std::cout << "r: " << r << "\n";
-    std::string prm = pattern.substr(r - 1);
-    std::cout << "prm: `" << prm << "`\n";
-    std::cout << "pjk: `" << snippet << "`\n";
-    std::string str1 =
-        useful_structs.st.get_longest_common_prefix(prm, snippet);
-    if (str1.size() == snippet.size()) {
-      if (ii == pattern.size() || ii + 1 + shift > concat.size()) {
-        return shift;
-      }
-      std::cout << "mismatch was not found. shift is: " << shift << "\n";
-      std::cout << concat << "\n";
-      std::cout << std::string(shift, '_') + pattern << "\n";
+    return 0;
+  }
+
+  // find leftmost mismatch between shifted p[1...ii] and snippet
+  std::optional<bool> leftmost_mismatch_was_found;
+
+  assert(prefix_snippet.size() >= shift);
+  size_t r = prefix_snippet.size() - shift + 1;
+  assert(r >= 1);
+  std::cout << "r: " << r << "\n";
+  std::string prm = pattern.substr(r - 1);
+  std::cout << "prm: `" << prm << "`\n";
+  std::cout << "pjk: `" << snippet << "`\n";
+  std::string str1 = useful_structs.st.get_longest_common_prefix(prm, snippet);
+  if (str1.size() == snippet.size()) {
+    if (ii == pattern.size() || ii + 1 + shift > concat.size()) {
       return shift;
-    } else {
-      return 0;
     }
+    std::cout << "mismatch was not found. shift is: " << shift << "\n";
+    std::cout << concat << "\n";
+    std::cout << std::string(shift, '_') + pattern << "\n";
+    return shift;
+  } else {
+    return 0;
   }
 
   return 0;
