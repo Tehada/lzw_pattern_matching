@@ -379,9 +379,8 @@ struct SuffixTree {
     return _euler[idx];
   }
 
-  // here we assume that substring is substr of _string of suff tree.
-  // ideally this should be checked strictly.
   SuffTreeNodeInfo get_node(const std::string& substring) const {
+    assert(_string.find(substring) != std::string::npos);
     SuffTreeNodeInfo res;
     res.sf_ptr = this;
     if (substring.empty()) {
@@ -431,20 +430,20 @@ struct SuffixTree {
 
     // Проверяем находимся ли мы в explicit ноде сейчас:
     if (info.edge == nullptr) {
-      std::cout << "-------> here3\n";
+      // std::cout << "-------> here3\n";
       // Мы в explicit ноде.
       // Можем ли мы шагнуть из неё по символу `c`:
       if (_edges.contains({info.node_id, c})) {
         const Edge* edge = &(_edges.at({info.node_id, c}));
-        std::cout << "-------> here4\n";
+        // std::cout << "-------> here4\n";
         // Проверим, сколько у нас символов на этом ребре, чтобы понять, будем
         // ли мы возвращать explicit или implicit ноду:
         if (edge->size() == 0 || (edge->size() == 1 && edge->leads_to_leaf)) {
-          std::cout << "-----> here5\n";
+          // std::cout << "-----> here5\n";
           res.node_id = edge->dest_node_index;
           return res;
         } else {
-          std::cout << "-----> here6\n";
+          // std::cout << "-----> here6\n";
           res.node_id = info.node_id;
           res.edge = edge;
           res.offset = 0;
@@ -457,20 +456,20 @@ struct SuffixTree {
         return res;
       }
     } else {
-      std::cout << "-------> here7\n";
+      // std::cout << "-------> here7\n";
       // Мы в implicit ноде.
       // Проверим совпадение символов:
       if (_string.at(info.edge->first_char_index + info.offset + 1) == c) {
-        std::cout << "-------> here8\n";
+        // std::cout << "-------> here8\n";
         // Теперь надо понять, будет ли следющая нода explicit или implicit.
         if (info.offset + 1 == info.edge->size() ||
             (info.offset + 2 == info.edge->size() &&
              info.edge->leads_to_leaf)) {
-          std::cout << "-------> here9\n";
+          // std::cout << "-------> here9\n";
           res.node_id = info.edge->dest_node_index;
           return res;
         } else {
-          std::cout << "-------> here10\n";
+          // std::cout << "-------> here10\n";
           res.node_id = info.node_id;
           res.edge = info.edge;
           res.offset = info.offset + 1;
